@@ -5,6 +5,8 @@
 #include <arpa/inet.h>
 #include <unistd.h>
 
+//send() and rcv() system routines
+
 int main(int argc,char **argv)
 {
     char snd_msg[100];
@@ -15,7 +17,7 @@ int main(int argc,char **argv)
 
     struct sockaddr_in server_address;
     //bzero(&server_address, sizeof(server_address));
-    memset(&server_address, 0, sizeof(server_adress));
+    memset(&server_address, 0, sizeof(server_address));
     server_address.sin_family = AF_INET;
     server_address.sin_port = htons(6463);
 
@@ -25,13 +27,10 @@ int main(int argc,char **argv)
     printf("Connect status:%d\n", c);
 
     while(1){
-        bzero(snd_msg, 100);
-        bzero(rcv_msg, 100);
-        //printf("yay\n");
+        memset(&snd_msg, 0, sizeof(snd_msg));
+        memset(&rcv_msg, 0, sizeof(rcv_msg));
         fgets(snd_msg, 100, stdin);
-        //printf("yay\n");
         write(socket_fdesc, snd_msg, strlen(snd_msg)+1);
-        //printf("yay\n");
         read(socket_fdesc, rcv_msg, 100);
         printf("Received msg:%s\n", rcv_msg);
     }
