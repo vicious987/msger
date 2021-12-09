@@ -4,7 +4,7 @@
 #include <string.h>
 #include <arpa/inet.h>
 #include <unistd.h>
-int PORT = 6463;
+int MYPORT = 6463;
 int LIMIT = 10;
 
 int send_to(int receiver_port, char* receiver_ip, char* msg){
@@ -24,7 +24,44 @@ int send_to(int receiver_port, char* receiver_ip, char* msg){
     }
     write(socket_fdesc, msg, strlen(msg) + 1);
     close(socket_fdesc);
+    printf("nicela\n");
     return 0;
+}
+
+void receive(int server_fd){
+    int socket;
+    char msg[100];
+
+    fd_set curr_fd_sockset, rdy_fd_sockset;
+    FD_ZERO(&curr_fd_sockset);
+    FD_ZERO(&rdy_fd_sockset);
+
+    FD_SET(server_fd, &curr_fd_sockset);
+    while(1) { // should it end somehow?
+        rdy_fd_sockset = curr_fd_sockset;
+
+        if (select(FD_SETSIZE, &rdy_fd_sockset, NULL, NULL, NULL) < 0){ // setsize +1 ?
+            perror("select in receive failed");
+            exit(1);
+        }
+
+        for (int fd = 0; fd < FD_SETSIZE; fd++){
+            if (FD_ISSET(fd , &rdy_fd_sockset)){
+                if (fd == server_fd){
+                    if (socket = accept(server_fd, (struct sockaddr*) NULL, NULL) < 0){
+                        perror("accept in receive failed");
+                        exit(1);
+                    }
+                    FD_SET(socket, &curr_fd_sockset);
+                } else {
+                    memset(msg, 0, sizeof(msg));
+                    read(socket, msg, 100); 
+                    printf("%s\n", msg);
+                    FD_CLR(fd, &curr_fd_sockset);
+                }
+            }
+        }
+    }
 }
 
 int main(int argc,char **argv) {
@@ -35,7 +72,7 @@ int main(int argc,char **argv) {
     memset(&server_address, 0, sizeof server_address);
     server_address.sin_family = AF_INET;
     server_address.sin_addr.s_addr = htons(INADDR_ANY);
-    server_address.sin_port = htons(PORT);
+    server_address.sin_port = htons(MYPORT);
     
     printf("ip address: %s\n", inet_ntoa(server_address.sin_addr));
     printf("port is: %d\n", (int)ntohs(server_address.sin_port));
@@ -60,9 +97,6 @@ int main(int argc,char **argv) {
         perror("listen failed");
         exit(1);
     }
-
-    int comm_fdesc = accept(listen_socket_fdesc, (struct sockaddr*) NULL, NULL); 
-    printf("accept status: %d\n", comm_fdesc);
 
     return 0;
 }
