@@ -77,9 +77,7 @@ int main(int argc,char **argv) {
     int MYPORT;
     scanf("%d", &MYPORT);
 
-
     int listen_socket_fdesc;
-    
 
     struct sockaddr_in server_address;
     memset(&server_address, 0, sizeof server_address);
