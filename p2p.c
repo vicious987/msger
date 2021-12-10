@@ -4,8 +4,12 @@
 #include <string.h>
 #include <arpa/inet.h>
 #include <unistd.h>
+#include <pthread.h>
+#include <stdlib.h>
+
 int MYPORT = 6463;
 int LIMIT = 10;
+char* LOOPBACK_IP = "127.0.0.1";
 
 int send_to(int receiver_port, char* receiver_ip, char* msg){
     int socket_fdesc;
@@ -28,7 +32,7 @@ int send_to(int receiver_port, char* receiver_ip, char* msg){
     return 0;
 }
 
-void receive(int server_fd){
+void receive(int server_fd){ // replace select and fd sets with poll
     int socket;
     char msg[100];
 
@@ -64,6 +68,10 @@ void receive(int server_fd){
     }
 }
 
+void *t_receive(void *server_fd){
+    receive(*(int *) server_fd);
+}
+
 int main(int argc,char **argv) {
     int listen_socket_fdesc;
     
@@ -75,7 +83,7 @@ int main(int argc,char **argv) {
     server_address.sin_port = htons(MYPORT);
     
     printf("ip address: %s\n", inet_ntoa(server_address.sin_addr));
-    printf("port is: %d\n", (int)ntohs(server_address.sin_port));
+    printf("port is: %d\n", (int) ntohs(server_address.sin_port));
 
     if (listen_socket_fdesc = socket(AF_INET, SOCK_STREAM, 0) < 0) {
         perror("socket failed");
@@ -97,6 +105,23 @@ int main(int argc,char **argv) {
         perror("listen failed");
         exit(1);
     }
+
+    pthread_t thread;
+    pthread_create(&thread, NULL, &t_receive, &listen_socket_fdesc);
+    int on = 1;
+    int input;
+
+    printf("1 for test");
+    while(on){
+        scanf("%d", &input);
+        if (input == 1){
+            send_to(MYPORT, LOOPBACK_IP, "test msg");
+        } else {
+            on = 0;
+        }
+    }
+    pthread_cancel(thread);
+    pthread_join(thread, NULL);
 
     return 0;
 }
