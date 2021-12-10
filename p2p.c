@@ -66,7 +66,8 @@ void receive(int server_fd){ // replace select and fd sets with poll
     }
 }
 
-void *t_receive(void *server_fd){
+void * t_receive(void *server_fd){
     printf("Listening thread created!\n");
     receive(*(int *) server_fd);
+    return NULL;
 }
