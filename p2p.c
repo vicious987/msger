@@ -7,14 +7,13 @@
 #include <pthread.h>
 #include <stdlib.h>
 
-int MYPORT = 6463;
 int LIMIT = 10;
 char* LOOPBACK_IP = "127.0.0.1";
 
 int send_to(int receiver_port, char* receiver_ip, char* msg){
     int socket_fdesc;
-    if (socket_fdesc = socket(AF_INET, SOCK_STREAM, 0) < 0){
-        return -1;
+    if ((socket_fdesc = socket(AF_INET, SOCK_STREAM, 0)) < 0){
+        printf("Message failed on socket!\n");
     }
 
     struct sockaddr_in server_address;
@@ -24,11 +23,12 @@ int send_to(int receiver_port, char* receiver_ip, char* msg){
     inet_pton(AF_INET, receiver_ip, &(server_address.sin_addr));
 
     if (connect(socket_fdesc, (struct sockaddr *) &server_address, sizeof(server_address)) < 0){
+        printf("Message failed on connect!\n");
         return -2;
     }
     write(socket_fdesc, msg, strlen(msg) + 1);
     close(socket_fdesc);
-    printf("nicela\n");
+    printf("Message sent!\n");
     return 0;
 }
 
@@ -52,7 +52,7 @@ void receive(int server_fd){ // replace select and fd sets with poll
         for (int fd = 0; fd < FD_SETSIZE; fd++){
             if (FD_ISSET(fd , &rdy_fd_sockset)){
                 if (fd == server_fd){
-                    if (socket = accept(server_fd, (struct sockaddr*) NULL, NULL) < 0){
+                    if ((socket = accept(server_fd, (struct sockaddr*) NULL, NULL)) < 0){
                         perror("accept in receive failed");
                         exit(1);
                     }
@@ -69,10 +69,15 @@ void receive(int server_fd){ // replace select and fd sets with poll
 }
 
 void *t_receive(void *server_fd){
+    printf("Listening thread created!\n");
     receive(*(int *) server_fd);
 }
 
 int main(int argc,char **argv) {
+    int MYPORT;
+    scanf("%d", &MYPORT);
+
+
     int listen_socket_fdesc;
     
 
@@ -85,7 +90,7 @@ int main(int argc,char **argv) {
     printf("ip address: %s\n", inet_ntoa(server_address.sin_addr));
     printf("port is: %d\n", (int) ntohs(server_address.sin_port));
 
-    if (listen_socket_fdesc = socket(AF_INET, SOCK_STREAM, 0) < 0) {
+    if ((listen_socket_fdesc = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
         perror("socket failed");
         exit(1);
     }
@@ -110,12 +115,15 @@ int main(int argc,char **argv) {
     pthread_create(&thread, NULL, &t_receive, &listen_socket_fdesc);
     int on = 1;
     int input;
+    int toport;
 
     printf("1 for test");
     while(on){
         scanf("%d", &input);
         if (input == 1){
-            send_to(MYPORT, LOOPBACK_IP, "test msg");
+            printf("enter port:\n");
+            scanf("%d", &toport);
+            send_to(toport, LOOPBACK_IP, "test msg");
         } else {
             on = 0;
         }
