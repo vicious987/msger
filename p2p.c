@@ -5,13 +5,16 @@
 #include <stdio.h>
 #include <string.h>
 #include <unistd.h>
+#include <fcntl.h>
 
 #include "p2p.h"
 
 int send_to(int receiver_port, char* receiver_ip, char* msg){
     int socket_fdesc;
+
     if ((socket_fdesc = socket(AF_INET, SOCK_STREAM, 0)) < 0){
         printf("Message failed on socket!\n");
+        return -1;
     }
 
     struct sockaddr_in server_address;
@@ -24,15 +27,23 @@ int send_to(int receiver_port, char* receiver_ip, char* msg){
         printf("Message failed on connect!\n");
         return -2;
     }
-    write(socket_fdesc, msg, strlen(msg) + 1);
-    close(socket_fdesc);
+
+    int total_bytes_sent = 0;
+
+    //printf("start sending msg, bytesize: %ld", sizeof(msg));
+    while (total_bytes_sent < sizeof(msg)){ //what if send errors (returns <0)
+        total_bytes_sent += send(socket_fdesc, msg + total_bytes_sent, strlen(msg + total_bytes_sent), 0);
+        //printf("chunk sent, %d sent so far\n", total_bytes_sent);
+    }
     printf("Message sent!\n");
+
+    close(socket_fdesc);
     return 0;
 }
 
 void receive(int server_fd){ // replace select and fd sets with poll
     int socket;
-    char msg[100];
+    char msg[RCV_BUFFER_SIZE];
 
     fd_set curr_fd_sockset, rdy_fd_sockset;
     FD_ZERO(&curr_fd_sockset);
@@ -54,10 +65,13 @@ void receive(int server_fd){ // replace select and fd sets with poll
                         perror("accept in receive failed");
                         exit(1);
                     }
+
+                    fcntl(socket, F_SETFL, O_NONBLOCK); // set socket to non-blocking
                     FD_SET(socket, &curr_fd_sockset);
                 } else {
                     memset(msg, 0, sizeof(msg));
-                    read(socket, msg, 100); 
+                    recv(socket, msg, sizeof(msg), 0);
+                    //read(socket, msg, 100); 
                     printf("%s\n", msg);
                     FD_CLR(fd, &curr_fd_sockset);
                 }

@@ -12,7 +12,9 @@
 
 int main(int argc,char **argv) {
     int MYPORT;
+    printf("Enter listening port: ");
     scanf("%d", &MYPORT);
+    printf("\n");
 
     int listen_socket_fdesc;
 
@@ -52,11 +54,11 @@ int main(int argc,char **argv) {
     int input;
     int toport;
 
-    printf("1 for test\n");
     while(on){
+        printf("awaiting input - 1 for test, anykey for exit\n");
         scanf("%d", &input);
         if (input == 1){
-            printf("enter port:\n");
+            printf("enter port: ");
             scanf("%d", &toport);
             send_to(toport, LOOPBACK_IP, "test msg");
         } else {

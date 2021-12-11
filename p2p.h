@@ -3,6 +3,7 @@
 
 #define LOOPBACK_IP "127.0.0.1"
 #define LIMIT 10
+#define RCV_BUFFER_SIZE 1000
 
 int send_to(int receiver_port, char* receiver_ip, char* msg);
 
