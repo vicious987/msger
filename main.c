@@ -11,56 +11,30 @@
 
 
 int main(int argc,char **argv) {
-    int MYPORT;
+    int MY_PORT;
+    int to_port;
+
     printf("Enter listening port: ");
-    scanf("%d", &MYPORT);
+    scanf("%d", &MY_PORT);
     printf("\n");
 
-    int listen_socket_fdesc;
-
-    struct sockaddr_in server_address;
-    memset(&server_address, 0, sizeof server_address);
-    server_address.sin_family = AF_INET;
-    server_address.sin_addr.s_addr = htons(INADDR_ANY);
-    server_address.sin_port = htons(MYPORT);
-    
-    printf("ip address: %s\n", inet_ntoa(server_address.sin_addr));
-    printf("port: %d\n", (int) ntohs(server_address.sin_port));
-
-    if ((listen_socket_fdesc = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
-        perror("socket failed");
-        exit(1);
-    }
-    // make port reusable 
-    int yes=1; // can we do it 1 line?
-    if (setsockopt(listen_socket_fdesc, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof yes) < 0) {
-        perror("setsockopt failed");
-        exit(1);
-    } 
-
-    if (bind(listen_socket_fdesc, (struct sockaddr *) &server_address, sizeof(server_address)) < 0){
-        perror("bind failed");
-        exit(1);
-    }
-
-    if (listen(listen_socket_fdesc, LIMIT) < 0){
-        perror("listen failed");
-        exit(1);
-    }
-
+    int listen_socket_fdesc = create_listening_socket(MY_PORT);
     pthread_t thread;
     pthread_create(&thread, NULL, &t_receive, &listen_socket_fdesc);
+
+    printf("Enter receiving port:\n");
+    scanf("%d", &to_port);
+    printf("\n");
+    int send_socket_fdesc = create_sending_socket(to_port, LOOPBACK_IP);
+
+
     int on = 1;
     int input;
-    int toport;
-
+    printf("Type 1 to send a test message\n");
     while(on){
-        printf("awaiting input - 1 for test, anykey for exit\n");
         scanf("%d", &input);
         if (input == 1){
-            printf("enter port: ");
-            scanf("%d", &toport);
-            send_to(toport, LOOPBACK_IP, "test msg");
+            send_str(send_socket_fdesc, "test msg!");
         } else {
             on = 0;
         }

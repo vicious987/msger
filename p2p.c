@@ -67,7 +67,6 @@ int send_file_to(int receiver_port, char* receiver_ip){
     return 1;
 }
 
-
 int send_to(int receiver_port, char* receiver_ip, char* msg){
     int socket_fdesc;
 
@@ -98,45 +97,6 @@ int send_to(int receiver_port, char* receiver_ip, char* msg){
 
     close(socket_fdesc);
     return 0;
-}
-
-void receive(int server_fd){ // replace select and fd sets with poll
-    int socket;
-    char msg[BUFFER_SIZE];
-
-    fd_set curr_fd_sockset, rdy_fd_sockset;
-    FD_ZERO(&curr_fd_sockset);
-    FD_ZERO(&rdy_fd_sockset);
-
-    FD_SET(server_fd, &curr_fd_sockset);
-    while(1) { // should it end somehow?
-        rdy_fd_sockset = curr_fd_sockset;
-
-        if (select(FD_SETSIZE, &rdy_fd_sockset, NULL, NULL, NULL) < 0){ // setsize +1 ?
-            perror("select in receive failed");
-            exit(1);
-        }
-
-        for (int fd = 0; fd < FD_SETSIZE; fd++){
-            if (FD_ISSET(fd , &rdy_fd_sockset)){
-                if (fd == server_fd){
-                    if ((socket = accept(server_fd, (struct sockaddr*) NULL, NULL)) < 0){
-                        perror("accept in receive failed");
-                        exit(1);
-                    }
-
-                    //fcntl(socket, F_SETFL, O_NONBLOCK); // set socket to non-blocking // do i need this?
-                    FD_SET(socket, &curr_fd_sockset);
-                } else {
-                    memset(msg, 0, sizeof(msg));
-                    recv(socket, msg, sizeof(msg), 0);
-                    //read(socket, msg, 100); 
-                    printf("%s\n", msg);
-                    FD_CLR(fd, &curr_fd_sockset);
-                }
-            }
-        }
-    }
 }
 
 void receive_file(int server_fd){ // replace select and fd sets with poll
@@ -208,6 +168,113 @@ void * t_receive(void *server_fd){
 
 void * t_receive_file(void *server_fd){
     printf("Listening thread created!\n");
-    receive(*(int *) server_fd);
+    receive_file(*(int *) server_fd);
     return NULL;
+}
+
+//REFACTOR
+int create_sending_socket(int receiver_port, char* receiver_ip){
+    int socket_fdesc;
+
+    struct sockaddr_in server_address;
+    memset(&server_address, 0, sizeof(server_address));
+    server_address.sin_family = AF_INET;
+    server_address.sin_port = htons(receiver_port);
+    inet_pton(AF_INET, receiver_ip, &(server_address.sin_addr));
+
+    if ((socket_fdesc = socket(AF_INET, SOCK_STREAM, 0)) < 0){
+        return -1;
+    }
+
+    if (connect(socket_fdesc, (struct sockaddr *) &server_address, sizeof(server_address)) < 0){
+        return -1;
+    }
+    return socket_fdesc;
+}
+
+int create_listening_socket(int listening_port){
+    int listen_socket_fdesc;
+
+    struct sockaddr_in server_address;
+    memset(&server_address, 0, sizeof server_address);
+    server_address.sin_family = AF_INET;
+    server_address.sin_addr.s_addr = htons(INADDR_ANY);
+    server_address.sin_port = htons(listening_port);
+    
+    printf("Creating listening socket on:\n");
+    printf("ip address: %s\n", inet_ntoa(server_address.sin_addr));
+    printf("port: %d\n", (int) ntohs(server_address.sin_port));
+
+    if ((listen_socket_fdesc = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
+        perror("socket failed");
+        exit(1);
+    }
+    // make port reusable 
+    int yes=1; // can we do it 1 line?
+    if (setsockopt(listen_socket_fdesc, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof yes) < 0) {
+        perror("setsockopt failed");
+        exit(1);
+    } 
+
+    if (bind(listen_socket_fdesc, (struct sockaddr *) &server_address, sizeof(server_address)) < 0){
+        perror("bind failed");
+        exit(1);
+    }
+
+    if (listen(listen_socket_fdesc, LIMIT) < 0){
+        perror("listen failed");
+        exit(1);
+    }
+    return listen_socket_fdesc;
+}
+
+int send_str(int socket, char* msg_str){
+    int total_chars_sent = 0;
+    while (total_chars_sent < sizeof(msg_str)) { //what if send errors (returns < 0)
+        total_chars_sent += send(socket, msg_str + total_chars_sent, strlen(msg_str + total_chars_sent), 0);
+    }
+    printf("Message sent!\n");
+    return 0;
+}
+
+void receive(int server_fd){ // replace select and fd sets with poll
+    int socket;
+    char msg_buffer[BUFFER_SIZE];
+
+    fd_set curr_fd_sockset, rdy_fd_sockset;
+    FD_ZERO(&curr_fd_sockset);
+    FD_ZERO(&rdy_fd_sockset);
+
+    FD_SET(server_fd, &curr_fd_sockset);
+    while(1) { // should it end somehow?
+        rdy_fd_sockset = curr_fd_sockset;
+
+        if (select(FD_SETSIZE, &rdy_fd_sockset, NULL, NULL, NULL) < 0){ // setsize +1 ?
+            perror("select in receive failed");
+            exit(1);
+        }
+
+        for (int fd = 0; fd < FD_SETSIZE; fd++){
+            if (FD_ISSET(fd , &rdy_fd_sockset)){
+                if (fd == server_fd){
+                    if ((socket = accept(server_fd, (struct sockaddr*) NULL, NULL)) < 0){
+                        perror("accept in receive failed");
+                        exit(1);
+                    }
+
+                    //fcntl(socket, F_SETFL, O_NONBLOCK); // set socket to non-blocking // do i need this?
+                    FD_SET(socket, &curr_fd_sockset);
+                } else {
+                    rcv_and_printstr(socket, msg_buffer, sizeof(msg_buffer));
+                    FD_CLR(fd, &curr_fd_sockset);
+                }
+            }
+        }
+    }
+}
+
+void rcv_and_printstr(int socket, char* buffer, size_t bufflen){
+    memset(buffer, 0, bufflen);
+    recv(socket, buffer, bufflen, 0);
+    printf("%s\n", buffer);
 }
