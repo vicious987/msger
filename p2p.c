@@ -26,7 +26,7 @@ int send_file_to(int receiver_port, char* receiver_ip){
         return -2;
     } 
 
-    FILE *file= fopen("infile.jpg", "rb");
+    FILE *file= fopen("in.jpg", "rb");
     if (file == NULL){
         printf("sendfile Failed to open file\n");
         return -1;
@@ -139,7 +139,74 @@ void receive(int server_fd){ // replace select and fd sets with poll
     }
 }
 
+void receive_file(int server_fd){ // replace select and fd sets with poll
+    int socket;
+
+    fd_set curr_fd_sockset, rdy_fd_sockset;
+    FD_ZERO(&curr_fd_sockset);
+    FD_ZERO(&rdy_fd_sockset);
+
+    FD_SET(server_fd, &curr_fd_sockset);
+    while(1) { // should it end somehow?
+        rdy_fd_sockset = curr_fd_sockset;
+
+        if (select(FD_SETSIZE, &rdy_fd_sockset, NULL, NULL, NULL) < 0){ // setsize +1 ?
+            perror("select in receive failed");
+            exit(1);
+        }
+
+        unsigned char buffer[BUFFER_SIZE];
+        memset(buffer, 0, sizeof(buffer));
+        for (int fd = 0; fd < FD_SETSIZE; fd++){
+            if (FD_ISSET(fd , &rdy_fd_sockset)){
+                if (fd == server_fd){
+                    if ((socket = accept(server_fd, (struct sockaddr*) NULL, NULL)) < 0){
+                        perror("accept in receive failed");
+                        exit(1);
+                    }
+
+                    //fcntl(socket, F_SETFL, O_NONBLOCK); // set socket to non-blocking // do i need this?
+                    FD_SET(socket, &curr_fd_sockset);
+                } else {
+                    FILE *f = fopen("out.jpg", "wb");
+                    long fsize = 0;
+                    size_t bytes_received = 0;
+                    size_t written = 0;
+                    size_t written_so_far = 0;
+                    recv(socket, &fsize, sizeof(long), 0);
+                    fsize = ntohl(fsize);
+                    if (fsize > 0){
+                        //read to buffer
+                        bytes_received  = recv(socket, &buffer, sizeof(buffer), 0);
+                        //write from buffer to file
+                        written_so_far = 0;
+                        while (fsize > 0) { 
+                            written = fwrite(buffer + written_so_far, 1, bytes_received, f);
+                            if (written < 1){
+                                return;
+                            }
+                            written_so_far += written;
+                            fsize -= written;
+                        }
+                    fclose(f);
+                    }
+
+                    //recv(socket, msg, sizeof(msg), 0);
+                    //printf("%s\n", msg);
+                    FD_CLR(fd, &curr_fd_sockset);
+                }
+            }
+        }
+    }
+}
+
 void * t_receive(void *server_fd){
+    printf("Listening thread created!\n");
+    receive(*(int *) server_fd);
+    return NULL;
+}
+
+void * t_receive_file(void *server_fd){
     printf("Listening thread created!\n");
     receive(*(int *) server_fd);
     return NULL;
