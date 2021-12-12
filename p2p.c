@@ -9,6 +9,65 @@
 
 #include "p2p.h"
 
+int send_file_to(int receiver_port, char* receiver_ip){
+    int socket_fdesc;
+    if ((socket_fdesc = socket(AF_INET, SOCK_STREAM, 0)) < 0){
+        printf("sendfile failed on socket!\n");
+        return -1;
+    }
+    struct sockaddr_in server_address;
+    memset(&server_address, 0, sizeof(server_address));
+    server_address.sin_family = AF_INET;
+    server_address.sin_port = htons(receiver_port);
+    inet_pton(AF_INET, receiver_ip, &(server_address.sin_addr));
+
+    if (connect(socket_fdesc, (struct sockaddr *) &server_address, sizeof(server_address)) < 0){
+        printf("sendfile failed on connect!\n");
+        return -2;
+    } 
+
+    FILE *file= fopen("infile.jpg", "rb");
+    if (file == NULL){
+        printf("sendfile Failed to open file\n");
+        return -1;
+    }
+
+    fseek(file, 0, SEEK_END);
+    long file_size = ftell(file);
+    rewind(file);
+    if (file_size == EOF) {
+        return -1;
+    }
+
+    //informing about file size
+    long expected_filesize = htonl(file_size);
+    int bytes_send = send(socket_fdesc, &expected_filesize, sizeof(expected_filesize), 0); // different sizes of longs on architectures??
+    if (bytes_send != sizeof(expected_filesize)){
+        printf("sendfile: issue on sending expected size\n");
+        return -1;
+    }
+
+    //sending file
+    unsigned char buffer[BUFFER_SIZE]; // typedef unsigned char to BYTE?
+    size_t bytes_read = 0;
+    size_t bytes_sent = 0;
+    size_t chunk_size = 0;
+    while ((bytes_read = fread(buffer, 1, sizeof(buffer), file)) > 0) {
+        chunk_size = bytes_read < sizeof(buffer) ? bytes_read : sizeof(buffer);
+        bytes_sent = send(socket_fdesc, buffer, chunk_size, 0);  //assume that send is gonna send in single go
+        if (bytes_sent < chunk_size){
+            printf("sendfile: chunk too big for send!\n");
+            return -1;
+        }
+    }
+
+    fclose(file);
+    close(socket_fdesc);
+    printf("File send!\n");
+    return 1;
+}
+
+
 int send_to(int receiver_port, char* receiver_ip, char* msg){
     int socket_fdesc;
 
@@ -43,7 +102,7 @@ int send_to(int receiver_port, char* receiver_ip, char* msg){
 
 void receive(int server_fd){ // replace select and fd sets with poll
     int socket;
-    char msg[RCV_BUFFER_SIZE];
+    char msg[BUFFER_SIZE];
 
     fd_set curr_fd_sockset, rdy_fd_sockset;
     FD_ZERO(&curr_fd_sockset);
@@ -66,7 +125,7 @@ void receive(int server_fd){ // replace select and fd sets with poll
                         exit(1);
                     }
 
-                    fcntl(socket, F_SETFL, O_NONBLOCK); // set socket to non-blocking
+                    //fcntl(socket, F_SETFL, O_NONBLOCK); // set socket to non-blocking // do i need this?
                     FD_SET(socket, &curr_fd_sockset);
                 } else {
                     memset(msg, 0, sizeof(msg));
