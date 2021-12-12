@@ -17,7 +17,9 @@ void * t_receive_file(void *server_fd);
 int create_sending_socket(int receiver_port, char* receiver_ip);
 int create_listening_socket(int listening_port);
 int send_str(int socket, char* msg);
-void rcv_and_printstr(int socket, char* buffer, size_t bufflen);
+int send_bytebuffer(int socket, unsigned char *buff, size_t buffsize);
+
+void rcv_and_printstr(int socket, char* buffer, size_t buffsize);
 void receive(int server_fd);
 void* t_receive(void *server_fd);
 #endif

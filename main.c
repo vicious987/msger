@@ -3,6 +3,7 @@
 #include <sys/types.h>
 #include <sys/socket.h> 
 #include <pthread.h>
+#include <unistd.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -39,6 +40,9 @@ int main(int argc,char **argv) {
             on = 0;
         }
     }
+
+    close(listen_socket_fdesc);
+    close(send_socket_fdesc);
     pthread_cancel(thread);
     pthread_join(thread, NULL);
 
