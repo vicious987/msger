@@ -76,7 +76,7 @@ int send_str(int socket, char* msg_str){
     while (total_chars_sent < sizeof(msg_str)) { //what if send errors (returns < 0)
         total_chars_sent += send(socket, msg_str + total_chars_sent, strlen(msg_str + total_chars_sent), 0);
     }
-    printf("Message sent!\n");
+    printf("Message of length %d sent!\n", total_chars_sent);
     return 0;
 }
 
@@ -85,6 +85,7 @@ void receive(int server_fd){ // replace select and fd sets with poll
     char msg_buffer[BUFFER_SIZE];
     unsigned char byte_buffer[BUFFER_SIZE];
     char control_char;
+    int cc_rcv = 0;
 
     fd_set curr_fd_sockset, rdy_fd_sockset;
     FD_ZERO(&curr_fd_sockset);
@@ -109,15 +110,21 @@ void receive(int server_fd){ // replace select and fd sets with poll
                     //fcntl(socket, F_SETFL, O_NONBLOCK); // set socket to non-blocking // do i need this?
                     FD_SET(socket, &curr_fd_sockset);
                 } else {
-                    recv(socket, &control_char, 1, 0);
+                    printf("derp");
+                    rcv_and_printstr(socket, msg_buffer, sizeof(msg_buffer));
+                    /*
+                    //cc_rcv = recv(socket, &control_char, sizeof(control_char), 0);
+                    printf("got char of len %d : %c",cc_rcv, control_char);
                     switch (control_char){
                         case 'm':
                             rcv_and_printstr(socket, msg_buffer, sizeof(msg_buffer));
                             break;
+                        /*
                         case 'f':
                             rcv_and_save(socket, "out.jpg", byte_buffer, sizeof(byte_buffer));
                             break;
                     }
+                    */
                     FD_CLR(fd, &curr_fd_sockset);
                 }
             }
@@ -132,7 +139,7 @@ int send_control_char(int socket, char c) {
 void rcv_and_printstr(int socket, char* buffer, size_t buffsize){
     memset(buffer, 0, buffsize);
     recv(socket, buffer, buffsize, 0);
-    printf("%s\n", buffer);
+    printf("Received message: %s\n", buffer);
 }
 
 int send_bytebuffer(int socket, unsigned char* buff, size_t buffsize) {
