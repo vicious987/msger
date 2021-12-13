@@ -11,35 +11,71 @@
 #include "p2p.h"
 
 
-int main(int argc,char **argv) {
-    int MY_PORT;
-    int to_port;
+int main(int argc, char **argv) {
+    int my_port = 0;
+    int listen_socket_fdesc;
+    int send_socket_fdesc;
+    int receiver_port;
+    char receiver_ip[15];
+    memset(receiver_ip, 0, sizeof(receiver_ip));
 
-    printf("Enter listening port: ");
-    scanf("%d", &MY_PORT);
-    printf("\n");
+    switch (argc){
+        case 1: 
+            my_port = DEFAULT_LISTENING_PORT;
+            break;
+        case 2:
+            my_port = atoi(argv[1]);
+            break;
+        default:
+            my_port = DEFAULT_LISTENING_PORT;
+            break;
+    };
 
-    int listen_socket_fdesc = create_listening_socket(MY_PORT);
+/*
+    if ((listen_socket_fdesc = create_listening_socket(my_port)) < 0){ //replace with while
+        printf("Port %d is in use, please enter another listening port:");
+        scanf("%d", &my_port);
+    }
+    */
+
+    listen_socket_fdesc = create_listening_socket(my_port);
+    printf("Using listening port %d...\n", my_port);
+
+
     pthread_t thread;
     pthread_create(&thread, NULL, &t_receive, &listen_socket_fdesc);
 
-    printf("Enter receiving port:\n");
-    scanf("%d", &to_port);
-    printf("\n");
-    int send_socket_fdesc = create_sending_socket(to_port, LOOPBACK_IP);
+
+    printf("\nEnter receiver IP: ");
+    scanf("%s", receiver_ip);
+    printf("\nEnter receiver port: ");
+    scanf("%d", &receiver_port);
+    send_socket_fdesc = create_sending_socket(receiver_port, receiver_ip);
 
 
     int on = 1;
-    int input;
-    printf("Type 1 to send a test message\n");
+    char command[20];
+    char* input;
+    printf("To send a message, type !m <message>\n");
+    printf("To send a file, type !f <filename>\n");
+    printf("To exit, type !exit\n");
+    //printf("To see manual, !help\n");
     while(on){
-        scanf("%d", &input);
-        if (input == 1){
-            send_str(send_socket_fdesc, "test msg!");
-        } else if (input == 2) {
-            send_file(send_socket_fdesc, "in.jpg");
-        } else {
-            on = 0;
+        scanf("%s", command);
+        if (command[0] != '!' || strlen(command) < 2){
+            printf("Command unrecognized, please try again\n");
+            continue;
+        }
+        switch (command[1]){
+            case 'm':
+                send_control_char(send_socket_fdesc, 'm');
+                //send_str(send_socket_fdesc, "test msg!");
+                break;
+            case 'e':
+                on = 0;
+                break;
+            default:
+                printf("Command unrecognized, please try again\n");
         }
     }
 

@@ -10,7 +10,6 @@
 #include "p2p.h"
 
 void * t_receive(void *server_fd){
-    printf("Listening thread created!\n");
     receive(*(int *) server_fd);
     return NULL;
 }
@@ -43,9 +42,11 @@ int create_listening_socket(int listening_port) {
     server_address.sin_addr.s_addr = htons(INADDR_ANY);
     server_address.sin_port = htons(listening_port);
     
+    /*
     printf("Creating listening socket on:\n");
     printf("ip address: %s\n", inet_ntoa(server_address.sin_addr));
     printf("port: %d\n", (int) ntohs(server_address.sin_port));
+    */
 
     if ((listen_socket_fdesc = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
         perror("socket failed");
@@ -83,6 +84,7 @@ void receive(int server_fd){ // replace select and fd sets with poll
     int socket;
     char msg_buffer[BUFFER_SIZE];
     unsigned char byte_buffer[BUFFER_SIZE];
+    char control_char;
 
     fd_set curr_fd_sockset, rdy_fd_sockset;
     FD_ZERO(&curr_fd_sockset);
@@ -104,17 +106,27 @@ void receive(int server_fd){ // replace select and fd sets with poll
                         perror("accept in receive failed");
                         exit(1);
                     }
-
                     //fcntl(socket, F_SETFL, O_NONBLOCK); // set socket to non-blocking // do i need this?
                     FD_SET(socket, &curr_fd_sockset);
                 } else {
-                    //rcv_and_printstr(socket, msg_buffer, sizeof(msg_buffer));
-                    rcv_and_save(socket, "out.jpg", byte_buffer, sizeof(byte_buffer));
+                    recv(socket, &control_char, 1, 0);
+                    switch (control_char){
+                        case 'm':
+                            rcv_and_printstr(socket, msg_buffer, sizeof(msg_buffer));
+                            break;
+                        case 'f':
+                            rcv_and_save(socket, "out.jpg", byte_buffer, sizeof(byte_buffer));
+                            break;
+                    }
                     FD_CLR(fd, &curr_fd_sockset);
                 }
             }
         }
     }
+}
+
+int send_control_char(int socket, char c) {
+    return send(socket, &c, sizeof(char), 0);
 }
 
 void rcv_and_printstr(int socket, char* buffer, size_t buffsize){

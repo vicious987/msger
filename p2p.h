@@ -4,6 +4,7 @@
 #define LOOPBACK_IP "127.0.0.1"
 #define LIMIT 10
 #define BUFFER_SIZE 1024
+#define DEFAULT_LISTENING_PORT 8080
 
 //void * t_receive(void *server_fd);
 //void * t_receive_file(void *server_fd);
@@ -22,6 +23,7 @@ int rcv_and_save(int socket, char* filename, unsigned char* byte_buffer, size_t 
 
 ssize_t rcv_bytebuffer(int socket, unsigned char* buff, size_t buffsize);
 int send_bytebuffer(int socket, unsigned char *buff, size_t buffsize);
+int send_control_char(int socket, char c);
 
 
 #endif
