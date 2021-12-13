@@ -48,6 +48,9 @@ int main(int argc, char **argv) {
 
     printf("\nEnter receiver IP: ");
     scanf("%s", receiver_ip);
+    if (receiver_ip[0] == '\0'){
+        strncpy(receiver_ip, sizeof(receiver_ip), "127.0.0.1");
+    }
     printf("\nEnter receiver port: ");
     scanf("%d", &receiver_port);
     send_socket_fdesc = create_sending_socket(receiver_port, receiver_ip);
@@ -69,7 +72,7 @@ int main(int argc, char **argv) {
         switch (command[1]){
             case 'm':
                 //send_control_char(send_socket_fdesc, 'm');
-                send_str(send_socket_fdesc, "test msg!");
+                send_str(send_socket_fdesc, command); 
                 break;
             case 'e':
                 on = 0;
