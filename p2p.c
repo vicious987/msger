@@ -82,6 +82,7 @@ int send_str(int socket, char* msg_str){
 void receive(int server_fd){ // replace select and fd sets with poll
     int socket;
     char msg_buffer[BUFFER_SIZE];
+    unsigned char byte_buffer[BUFFER_SIZE];
 
     fd_set curr_fd_sockset, rdy_fd_sockset;
     FD_ZERO(&curr_fd_sockset);
@@ -107,7 +108,8 @@ void receive(int server_fd){ // replace select and fd sets with poll
                     //fcntl(socket, F_SETFL, O_NONBLOCK); // set socket to non-blocking // do i need this?
                     FD_SET(socket, &curr_fd_sockset);
                 } else {
-                    rcv_and_printstr(socket, msg_buffer, sizeof(msg_buffer));
+                    //rcv_and_printstr(socket, msg_buffer, sizeof(msg_buffer));
+                    rcv_and_save(socket, "out.jpg", byte_buffer, sizeof(byte_buffer));
                     FD_CLR(fd, &curr_fd_sockset);
                 }
             }
@@ -128,39 +130,45 @@ int send_bytebuffer(int socket, unsigned char* buff, size_t buffsize) {
     return 0;
 }
 
-int rcv_bytebuffer(int socket, unsigned char* buff, size_t buffsize){
-    int bytes_read = 0;
+ssize_t rcv_bytebuffer(int socket, unsigned char* buff, size_t buffsize){
+    printf("\nrcv bytebuffer\n");
+    ssize_t bytes_read = 0;
     int total_bytes_read = 0;
-    for (int i = 0, bytes_read = 0; i < buffsize; i += bytes_read){
+    int i = 0;
+    while(i < buffsize){
         bytes_read = recv(socket, buff + i, buffsize, 0);
+        printf("%d\t", bytes_read);
         if (bytes_read < 0){
             return -1;
         }
         if (bytes_read == 0){ //!
             total_bytes_read = i;
-            return total_bytes_read;
+            break;
         }
+        i += bytes_read;
     }
-    return total_bytes_read;
+    printf("\nrcv bytebuffer end\n");
+    return i;
 }
 
-int rcv_and_save(int socket, char* filename, char* byte_buffer, size_t buffer_size){
+int rcv_and_save(int socket, char* filename, unsigned char* byte_buffer, size_t buffer_size){
     size_t bytes_written = 0;
-    FILE* f = open(filename, "wb");
+    FILE* f = fopen(filename, "wb");
     long filesize = 0;
     long received_bytecount = 0;
     long total_bytecount = 0;
+    int expected_buffer_size = 0;
 
     recv(socket, &filesize, sizeof(long), 0);
     filesize = ntohl(filesize);
     printf("Total file size expected: %ld\n", filesize);
 
-    while (total_bytecount < filesize){
+    while (total_bytecount < filesize) {
         //get buffer
-        received_bytecount = rcv_bytebuffer(socket, byte_buffer, buffer_size);
+        expected_buffer_size = filesize - total_bytecount < buffer_size ? filesize - total_bytecount : buffer_size;
+        received_bytecount = rcv_bytebuffer(socket, byte_buffer, expected_buffer_size);
         total_bytecount += received_bytecount;
-        printf("received batch : %ld\n", received_bytecount);
-        printf("received total : %ld\n", total_bytecount);
+        printf("received batch : %ld received total: %ld\n", received_bytecount, total_bytecount);
 
         //write buffer to file
         int i = 0;
@@ -172,7 +180,9 @@ int rcv_and_save(int socket, char* filename, char* byte_buffer, size_t buffer_si
             i += bytes_written;
         }
     }
+    printf("receiving done\n");
     fclose(f);
+    return 0;
 }
 
 
@@ -207,4 +217,5 @@ int send_file(int socket, char* filename){
     fclose(file);
     printf("File send!\n");
     return 1;
+
 }

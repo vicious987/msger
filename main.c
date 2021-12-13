@@ -36,6 +36,8 @@ int main(int argc,char **argv) {
         scanf("%d", &input);
         if (input == 1){
             send_str(send_socket_fdesc, "test msg!");
+        } else if (input == 2) {
+            send_file(send_socket_fdesc, "in.jpg");
         } else {
             on = 0;
         }
