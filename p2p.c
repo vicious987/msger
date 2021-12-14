@@ -104,7 +104,6 @@ int send_to(int receiver_port, char* receiver_ip, char* msg){
     }
     */
 
-
     printf("Message sent!\n");
     close(socket_fdesc);
     return 0;
@@ -154,8 +153,6 @@ void receive(int server_fd){ // replace select and fd sets with poll
                             break;
                         }
                     }
-
-                    //printf("\nTHIS IS CONTROL CHAR: %c\n", msg_buffer[0]);
                     FD_CLR (fd, &active_fd_set);
                 }
             }
