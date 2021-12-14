@@ -18,12 +18,19 @@ int send_file(int socket, char* filename);
 
 void* t_receive(void *server_fd);
 void receive(int server_fd);
-void rcv_and_printstr(int socket, char* buffer, size_t buffsize);
+int rcv_and_printstr(int socket, char* buffer, size_t buffsize);
 int rcv_and_save(int socket, char* filename, unsigned char* byte_buffer, size_t buffer_size);
 
 ssize_t rcv_bytebuffer(int socket, unsigned char* buff, size_t buffsize);
 int send_bytebuffer(int socket, unsigned char *buff, size_t buffsize);
 int send_control_char(int socket, char c);
+
+void receive2(int server_fd);
+int send_test(int receiver_port, char* receiver_ip);
+int send_to(int receiver_port, char* receiver_ip, char* msg);
+
+int send_file_to(int receiver_port, char* receiver_ip, char* filename);
+
 
 
 #endif
