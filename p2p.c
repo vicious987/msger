@@ -114,10 +114,10 @@ void receive(int server_fd){ // replace select and fd sets with poll
     char msg_buffer[BUFFER_SIZE];
     char msg[100];
     memset(msg, 0, sizeof(msg));
-    unsigned char byte_buffer[BUFFER_SIZE];
-    char control_char;
-    int cc_rcv = 0;
-    int r = 0;
+    //unsigned char byte_buffer[BUFFER_SIZE];
+    //char control_char;
+    //int cc_rcv = 0;
+    //int r = 0;
 
 
     fd_set active_fd_set, read_fd_set;
@@ -141,8 +141,10 @@ void receive(int server_fd){ // replace select and fd sets with poll
                     FD_SET (socket, &active_fd_set);
                 } else {
                     memset(msg_buffer, 0, sizeof(msg_buffer));
-                    recv(fd, msg_buffer, sizeof(msg_buffer), 0);
-                    control_char = msg_buffer[0];
+                    //recv(fd, msg_buffer, sizeof(msg_buffer), 0);
+                    //control_char = msg_buffer[0];
+                    rcv_and_printstr(fd, msg_buffer, sizeof(msg_buffer));
+                    /*
                     switch (control_char){
                         case 'm': {
                             rcv_and_printstr(fd, msg_buffer, sizeof(msg_buffer));
@@ -153,6 +155,7 @@ void receive(int server_fd){ // replace select and fd sets with poll
                             break;
                         }
                     }
+                    */
                     FD_CLR (fd, &active_fd_set);
                 }
             }
@@ -178,16 +181,16 @@ int send_bytebuffer(int socket, unsigned char* buff, size_t buffsize) {
 ssize_t rcv_bytebuffer(int socket, unsigned char* buff, size_t buffsize){
     printf("\nrcv bytebuffer\n");
     ssize_t bytes_read = 0;
-    int total_bytes_read = 0;
+    //int total_bytes_read = 0;
     int i = 0;
     while(i < buffsize){
         bytes_read = recv(socket, buff + i, buffsize, 0);
-        printf("%d\t", bytes_read);
+        printf("%ld\t", bytes_read);
         if (bytes_read < 0){
             return -1;
         }
         if (bytes_read == 0){ //!
-            total_bytes_read = i;
+            //total_bytes_read = i;
             break;
         }
         i += bytes_read;
@@ -195,6 +198,7 @@ ssize_t rcv_bytebuffer(int socket, unsigned char* buff, size_t buffsize){
     printf("\nrcv bytebuffer end\n");
     return i;
 }
+
 
 int rcv_and_save(int socket, char* filename, unsigned char* byte_buffer, size_t buffer_size){
     size_t bytes_written = 0;

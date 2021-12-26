@@ -14,28 +14,12 @@
 int main(int argc, char **argv) {
     int my_port = 0;
     int listen_socket_fdesc;
-    int send_socket_fdesc;
+    //int send_socket_fdesc;
     int receiver_port;
     char receiver_ip[15];
 
-    switch (argc){
-        case 1: 
-            my_port = DEFAULT_LISTENING_PORT;
-            break;
-        case 2:
-            my_port = atoi(argv[1]);
-            break;
-        default:
-            my_port = DEFAULT_LISTENING_PORT;
-            break;
-    };
-
-    /*
-    if ((listen_socket_fdesc = create_listening_socket(my_port)) < 0){ //replace with while
-        printf("Port %d is in use, please enter another listening port:");
-        scanf("%d", &my_port);
-    }
-    */
+    my_port = atoi(argv[1]);
+    receiver_port = atoi(argv[2]);
 
     listen_socket_fdesc = create_listening_socket(my_port);
     printf("Using listening port %d...\n", my_port);
@@ -44,41 +28,24 @@ int main(int argc, char **argv) {
     pthread_t thread;
     pthread_create(&thread, NULL, &t_receive, &listen_socket_fdesc);
 
-    printf("\nEnter receiver IP: ");
-    scanf("%s", receiver_ip);
-    printf("\nEnter receiver port: ");
-    scanf("%d", &receiver_port);
-
     printf("To send a message, type !m <message>\n");
     printf("To send a file, type !f <filename>\n");
     printf("To exit, type !exit\n");
 
     int on = 1;
-    char command[20];
-    char input_buffer[BUFFER_SIZE];
+    int command = 0;
+    //char input_buffer[BUFFER_SIZE];
     while(on){
-        scanf("%s %s", command, input_buffer);
-        if (command[0] != '!' || strlen(command) < 2){
-            printf("Command unrecognized, please try again\n");
-            continue;
-        }
-        switch (command[1]){
-            case 'm': {
-                send_to(receiver_port, receiver_ip, "m"); 
-                send_to(receiver_port, receiver_ip, input_buffer); 
+        scanf("%d", &command);
+        switch (command){
+            case 1: {
+                send_to(receiver_port, receiver_ip, "test message"); 
                 break;
             }
-            case 'f': {
-                send_to(receiver_port, receiver_ip, "f"); 
-                send_file_to(receiver_port, receiver_ip, "in.jpg"); 
-                break;
-            }
-            case 'e': {
+            default : {
                 on = 0;
                 break;
             }
-            default:
-                printf("Command unrecognized, please try again\n");
         }
     }
 
