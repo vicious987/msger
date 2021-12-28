@@ -14,9 +14,9 @@
 int main(int argc, char **argv) {
     int my_port = 0;
     int listen_socket_fdesc;
-    //int send_socket_fdesc;
+    int send_socket_fdesc;
     int receiver_port;
-    char receiver_ip[15];
+    //char receiver_ip[15];
 
     my_port = atoi(argv[1]);
     receiver_port = atoi(argv[2]);
@@ -24,13 +24,17 @@ int main(int argc, char **argv) {
     listen_socket_fdesc = create_listening_socket(my_port);
     printf("Using listening port %d...\n", my_port);
 
+    send_socket_fdesc = create_sending_socket(receiver_port, LOOPBACK_IP);
 
     pthread_t thread;
     pthread_create(&thread, NULL, &t_receive, &listen_socket_fdesc);
 
+    /*
     printf("To send a message, type !m <message>\n");
     printf("To send a file, type !f <filename>\n");
     printf("To exit, type !exit\n");
+    */
+    printf("\t----\n");
 
     int on = 1;
     int command = 0;
@@ -39,7 +43,8 @@ int main(int argc, char **argv) {
         scanf("%d", &command);
         switch (command){
             case 1: {
-                send_to(receiver_port, receiver_ip, "test message"); 
+                //send_str_to(receiver_port, receiver_ip, "test message"); 
+                send_str(send_socket_fdesc, "test msg!");
                 break;
             }
             default : {
@@ -50,7 +55,7 @@ int main(int argc, char **argv) {
     }
 
     close(listen_socket_fdesc);
-    //close(send_socket_fdesc);
+    close(send_socket_fdesc);
     pthread_cancel(thread);
     pthread_join(thread, NULL);
 

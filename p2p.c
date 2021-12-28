@@ -6,11 +6,12 @@
 #include <string.h>
 #include <unistd.h>
 #include <fcntl.h>
+#include <unistd.h>
 
 #include "p2p.h"
 
 void * t_receive(void *server_fd){
-    receive(*(int *) server_fd);
+    simple_receive(*(int *) server_fd);
     return NULL;
 }
 
@@ -27,9 +28,21 @@ int create_sending_socket(int receiver_port, char* receiver_ip){
         return -1;
     }
 
+    int retry = 1;
+    while(retry){
+        sleep(2);
+        if (connect(socket_fdesc, (struct sockaddr *) &server_address, sizeof(server_address)) < 0){
+            printf("CREATE&CONNECT: retrying connection...\n");
+        } else {
+            retry = 0;
+            printf("CREATE&CONNECT: success!\n");
+        }
+    }
+    /*
     if (connect(socket_fdesc, (struct sockaddr *) &server_address, sizeof(server_address)) < 0){
         return -1;
     }
+    */
     return socket_fdesc;
 }
 
@@ -70,15 +83,19 @@ int create_listening_socket(int listening_port) {
 }
 
 int send_str(int socket, char* msg_str){
+    /*
     int total_chars_sent = 0;
     while (total_chars_sent < sizeof(msg_str)) { //what if send errors (returns < 0)
         total_chars_sent += send(socket, msg_str + total_chars_sent, strlen(msg_str + total_chars_sent), 0);
     }
-    printf("Message of length %d sent!\n", total_chars_sent);
+    */
+    int bytes_sent = send(socket, msg_str, strlen(msg_str), 0);
+    //printf("Message of length %d sent!\n", total_chars_sent);
+    printf("Message of length %ld(%d) sent!\n", strlen(msg_str), bytes_sent);
     return 0;
 }
 
-int send_to(int receiver_port, char* receiver_ip, char* msg){
+int send_str_to(int receiver_port, char* receiver_ip, char* msg){
     int socket_fdesc;
     if ((socket_fdesc = socket(AF_INET, SOCK_STREAM, 0)) < 0){
         printf("Message failed on socket!\n");
@@ -141,21 +158,7 @@ void receive(int server_fd){ // replace select and fd sets with poll
                     FD_SET (socket, &active_fd_set);
                 } else {
                     memset(msg_buffer, 0, sizeof(msg_buffer));
-                    //recv(fd, msg_buffer, sizeof(msg_buffer), 0);
-                    //control_char = msg_buffer[0];
                     rcv_and_printstr(fd, msg_buffer, sizeof(msg_buffer));
-                    /*
-                    switch (control_char){
-                        case 'm': {
-                            rcv_and_printstr(fd, msg_buffer, sizeof(msg_buffer));
-                            break;
-                        }
-                        case 'f': {
-                            rcv_and_save(fd, "out.jpg", byte_buffer, sizeof(byte_buffer));
-                            break;
-                        }
-                    }
-                    */
                     FD_CLR (fd, &active_fd_set);
                 }
             }
@@ -163,11 +166,31 @@ void receive(int server_fd){ // replace select and fd sets with poll
     }
 }
 
+void simple_receive(int server_fd){
+    char msg[100];
+    memset(msg, 0, sizeof(msg));
+    int accepted_fd;
+    while (1) {
+        if ((accepted_fd = accept(server_fd, (struct sockaddr*) NULL, NULL)) < 0){
+            printf("failed on accept in simple_receive");
+        }
+        if (send(accepted_fd, "Hello from the other side!", 27, 0) < 0){
+            perror("send");
+        }
+        while(1) {
+            memset(msg, 0, sizeof(msg));
+            recv(accepted_fd, msg, sizeof(msg), 0);
+            printf("M:'%s'\n", msg);
+        }
+    }
+}
+
 
 int rcv_and_printstr(int socket, char* buffer, size_t buffsize){
     memset(buffer, 0, buffsize);
-    int i = recv(socket, buffer, buffsize, 0);
-    printf("Received message: %s\n", buffer);
+    int i = recv(socket, buffer, buffsize - 1, 0);
+    buffer[i] = '\0';
+    printf("Received message of size %d: '%s' \n",i, buffer);
     return i;
 }
 
